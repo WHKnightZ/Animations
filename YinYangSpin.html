@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body
+    style="
+      height: 100vh;
+      margin: 0;
+      background-color: #757575;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    "
+  >
+    <canvas id="canvas" width="600" height="600" style="background-color: #757575"></canvas>
+  </body>
+  <script>
+    const canvas = document.getElementById("canvas");
+    const context = canvas.getContext("2d");
+    const ACCELERATION = 0.005;
+    const BIG_RADIUS = 100;
+    const SMALL_RADIUS = BIG_RADIUS / 3;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    let angle = 0;
+    let velocity = 0;
+
+    const PI_2 = 2 * Math.PI;
+
+    const fillCircle = (x, y, radius, color) => {
+      context.beginPath();
+      context.arc(x, y, radius, 0, PI_2, false);
+      context.fillStyle = color;
+      context.fill();
+    };
+
+    const mapReverseColor = {
+      white: "black",
+      black: "white",
+    };
+
+    const fill2Circle = (x, y, color) => {
+      fillCircle(x, y, BIG_RADIUS, color);
+      fillCircle(x, y, SMALL_RADIUS, mapReverseColor[color]);
+    };
+
+    const animate = () => {
+      velocity += ACCELERATION;
+      angle += velocity;
+
+      const x = centerX + Math.cos(angle) * BIG_RADIUS;
+      const y = centerY + Math.sin(angle) * BIG_RADIUS;
+
+      fill2Circle(x, y, "black");
+      fill2Circle(centerX * 2 - x, centerY * 2 - y, "white");
+
+      requestAnimationFrame(animate);
+    };
+
+    animate();
+  </script>
+</html>
