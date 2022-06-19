@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <style>
+    * {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    }
+  </style>
+  <body style="margin: 0; padding: 32px 0; display: flex; flex-direction: column; align-items: center">
+    <div style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap">
+      <canvas id="board" width="400" height="400" style="border: 1px solid #757575; margin: 0 16px"></canvas>
+      <div style="border: 1px solid #757575; margin: 0 16px; display: flex; flex-direction: column; width: 400px">
+        <div style="position: relative; width: 100%; height: 200px; text-align: center">
+          <div style="margin-top: 32px">Css</div>
+          <div
+            id="animation-css"
+            style="
+              position: absolute;
+              background-color: red;
+              left: 0;
+              top: 100px;
+              width: 50px;
+              height: 50px;
+              transition: left 0.5s cubic-bezier(0, 0, 1, 1);
+            "
+          ></div>
+        </div>
+        <div style="position: relative; width: 100%; height: 200px; text-align: center">
+          <div style="margin-top: 32px">Canvas</div>
+          <canvas
+            id="animation-canvas"
+            width="400"
+            height="50"
+            style="position: absolute; top: 100px; left: 0"
+          ></canvas>
+        </div>
+      </div>
+    </div>
+    <button id="button-start" style="margin-top: 32px">Start</button>
+  </body>
+  <script>
+    const POINT_LEFT_COLOR = "#f08";
+    const POINT_RIGHT_COLOR = "#0ab";
+    const DRAGGING_OFF = 0;
+    const DRAGGING_LEFT = 1;
+    const DRAGGING_RIGHT = 2;
+    const POINT_RADIUS = 9;
+    const DEFAULT = [0.4, 0.1, 0.2, 0.85];
+
+    let width, height, pointLeft, pointRight;
+
+    const calCubicBezier = (pointLeft, pointRight) => {
+      const [p1, p2] = pointLeft;
+      const [p3, p4] = pointRight;
+
+      return [p1 / width, 1 - p2 / height, p3 / width, 1 - p4 / height];
+    };
+
+    // Board
+    const board = () => {
+      const canvas = document.getElementById("board");
+      const context = canvas.getContext("2d");
+      width = canvas.width;
+      height = canvas.height;
+      pointLeft = [width * DEFAULT[0], height * (1 - DEFAULT[1])];
+      pointRight = [width * DEFAULT[2], height * (1 - DEFAULT[3])];
+
+      const pointBottomLeft = [0, height]; // Point: [x, y]
+      const pointTopRight = [width, 0];
+
+      let dragging = DRAGGING_OFF;
+
+      const calDistance = (point1, point2) => {
+        const offsetX = point1[0] - point2[0];
+        const offsetY = point1[1] - point2[1];
+        return offsetX * offsetX + offsetY * offsetY;
+      };
+
+      const drawPoint = (point, color) => {
+        const radius = POINT_RADIUS;
+        context.beginPath();
+        context.arc(...point, radius, 0, 2 * Math.PI, false);
+        context.fillStyle = color;
+        context.fill();
+        context.lineWidth = 1;
+        context.strokeStyle = "rgba(0,0,0,.3)";
+        context.stroke();
+      };
+
+      const drawBoard = () => {
+        context.clearRect(0, 0, width, height);
+
+        context.lineWidth = 3;
+        context.strokeStyle = "#e5e6e7";
+        context.beginPath();
+        context.moveTo(...pointBottomLeft);
+        context.lineTo(...pointTopRight);
+        context.stroke();
+
+        // Draw curve
+        context.lineWidth = 4;
+        context.strokeStyle = "#454545";
+        context.beginPath();
+        context.moveTo(...pointBottomLeft);
+        context.bezierCurveTo(...pointLeft, ...pointRight, ...pointTopRight);
+        context.stroke();
+
+        // Draw bars
+        context.lineWidth = 2;
+        context.strokeStyle = "#858585";
+        context.beginPath();
+        context.moveTo(...pointBottomLeft);
+        context.lineTo(...pointLeft);
+        context.stroke();
+        context.beginPath();
+        context.moveTo(...pointTopRight);
+        context.lineTo(...pointRight);
+        context.stroke();
+
+        // Draw point left and right
+        drawPoint(pointLeft, POINT_LEFT_COLOR);
+        drawPoint(pointRight, POINT_RIGHT_COLOR);
+      };
+
+      const handleMouseMove = (e) => {
+        const { offsetX, offsetY } = e;
+
+        const point = [offsetX, offsetY];
+
+        if (dragging === DRAGGING_LEFT) pointLeft = point;
+        else pointRight = point;
+
+        draw();
+      };
+
+      canvas.addEventListener("mousedown", (e) => {
+        const { offsetX, offsetY } = e;
+
+        const point = [offsetX, offsetY];
+
+        const draggingLeft = () => {
+          pointLeft = point;
+          dragging = DRAGGING_LEFT;
+        };
+
+        const draggingRight = () => {
+          pointRight = point;
+          dragging = DRAGGING_RIGHT;
+        };
+
+        if (calDistance(point, pointLeft) < calDistance(point, pointRight)) draggingLeft();
+        else draggingRight();
+
+        canvas.addEventListener("mousemove", handleMouseMove);
+        draw();
+      });
+
+      canvas.addEventListener("mouseup", (e) => {
+        canvas.removeEventListener("mousemove", handleMouseMove);
+      });
+
+      drawBoard();
+    };
+
+    board();
+
+    // Animation Css
+    const animationCss = () => {
+      const animationCss = document.getElementById("animation-css");
+
+      let left = true;
+      const start = document.getElementById("button-start");
+      start.addEventListener("click", () => {
+        left = !left;
+        animationCss.style = `position: absolute;
+              left: ${left ? 0 : 350}px;
+              background-color: red;
+              width: 50px;
+              top: 100px;
+              height: 50px;
+              transition: left 0.5s cubic-bezier(${calCubicBezier(pointLeft, pointRight).join(", ")});`;
+      });
+    };
+
+    animationCss();
+
+    // Animation Canvas
+    const animationCanvas = () => {
+      const canvas = document.getElementById("animation-canvas");
+      const context = canvas.getContext("2d");
+      const width = canvas.width;
+      const height = canvas.height;
+
+      context.fillStyle = "green";
+      context.fillRect(0, 0, 50, 50);
+    };
+
+    animationCanvas();
+  </script>
+</html>
