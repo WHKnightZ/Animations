@@ -51,8 +51,11 @@
     const DRAGGING_RIGHT = 2;
     const POINT_RADIUS = 9;
     const DEFAULT = [0.4, 0.1, 0.2, 0.85];
+    const SQRT_1_2 = Math.sqrt(2) / 2;
 
     let width, height, pointLeft, pointRight;
+    let maxDuration = 0.5;
+    let bezierPoints;
 
     const calCubicBezier = (pointLeft, pointRight) => {
       const [p1, p2] = pointLeft;
@@ -88,7 +91,7 @@
         context.fillStyle = color;
         context.fill();
         context.lineWidth = 1;
-        context.strokeStyle = "rgba(0,0,0,.3)";
+        context.strokeStyle = "rgba(0, 0, 0, .3)";
         context.stroke();
       };
 
@@ -135,7 +138,9 @@
         if (dragging === DRAGGING_LEFT) pointLeft = point;
         else pointRight = point;
 
-        draw();
+        calBezierPoints();
+
+        drawBoard();
       };
 
       canvas.addEventListener("mousedown", (e) => {
@@ -156,8 +161,10 @@
         if (calDistance(point, pointLeft) < calDistance(point, pointRight)) draggingLeft();
         else draggingRight();
 
+        calBezierPoints();
+
         canvas.addEventListener("mousemove", handleMouseMove);
-        draw();
+        drawBoard();
       });
 
       canvas.addEventListener("mouseup", (e) => {
@@ -183,21 +190,110 @@
               width: 50px;
               top: 100px;
               height: 50px;
-              transition: left 0.5s cubic-bezier(${calCubicBezier(pointLeft, pointRight).join(", ")});`;
+              transition: left ${maxDuration}s cubic-bezier(${calCubicBezier(pointLeft, pointRight).join(", ")});`;
       });
     };
 
     animationCss();
 
     // Animation Canvas
+
+    // Tính bezier nhưng theo trục nằm ngang (0,0 -> 1,0)
+    const calBezierPoints = () => {
+      [xLeft, yLeft, xRight, yRight] = calCubicBezier(pointLeft, pointRight);
+
+      const sqrtLeft = Math.sqrt(xLeft * xLeft + yLeft * yLeft);
+      const sqrtRight = Math.sqrt(xRight * xRight + yRight * yRight);
+
+      bezierPoints = [
+        [0, 0],
+        [sqrtLeft * SQRT_1_2, sqrtLeft * SQRT_1_2 - 1],
+        [sqrtRight * SQRT_1_2, sqrtRight * SQRT_1_2 - 1],
+        [1, 0],
+      ];
+    };
+
+    calBezierPoints();
+
+    const findPointFromBezierPoints = (bezierPoints, relativePos) => {
+      const newBezierPoints = [];
+
+      for (let i = 0; i < bezierPoints.length - 1; i += 1) {
+        const left = bezierPoints[i];
+        const right = bezierPoints[i + 1];
+        newBezierPoints.push([
+          left[0] * (1 - relativePos) + right[0] * relativePos,
+          left[1] * (1 - relativePos) + right[1] * relativePos,
+        ]);
+      }
+
+      if (newBezierPoints.length === 1) return newBezierPoints[0];
+
+      return findPointFromBezierPoints(newBezierPoints, relativePos);
+    };
+
+    const sqr2 = (x) => x * x;
+    const sqr3 = (x) => x * x * x;
+
+    const bezierFunction = (x0, x1, x2, x3, relativePos) =>
+      sqr3(1 - relativePos) * x0 +
+      3 * relativePos * sqr2(1 - relativePos) * x1 +
+      3 * (1 - relativePos) * sqr2(relativePos) * x2 +
+      sqr3(relativePos) * x3;
+
+    for (let i = 0; i < 10; i += 1)
+      console.log(
+        bezierFunction(bezierPoints[0][0], bezierPoints[1][0], bezierPoints[2][0], bezierPoints[0][0], i * 0.1)
+      );
+
     const animationCanvas = () => {
       const canvas = document.getElementById("animation-canvas");
       const context = canvas.getContext("2d");
       const width = canvas.width;
       const height = canvas.height;
 
-      context.fillStyle = "green";
-      context.fillRect(0, 0, 50, 50);
+      let leftToRight = false;
+      let duration = 0;
+      let start = false;
+      const btnStart = document.getElementById("button-start");
+      btnStart.addEventListener("click", () => {
+        start = true;
+        leftToRight = !leftToRight;
+      });
+
+      let then;
+
+      const draw = (now) => {
+        if (then === undefined) {
+          then = now;
+        }
+        const elapsed = (now - then) / 1000;
+        then = now;
+
+        if (start) {
+          if (leftToRight) {
+            duration += elapsed;
+            if (duration > maxDuration) duration = maxDuration;
+          } else {
+            duration -= elapsed;
+            if (duration < 0) duration = 0;
+          }
+        }
+
+        const relativePos = (1 / maxDuration) * duration;
+
+        const a = findPointFromBezierPoints(bezierPoints, relativePos);
+
+        const posX = a[0] * (width - 50);
+
+        context.clearRect(0, 0, width, height);
+        context.fillStyle = "green";
+        context.fillRect(posX, 0, 50, 50);
+
+        requestAnimationFrame(draw);
+      };
+
+      requestAnimationFrame(draw);
     };
 
     animationCanvas();
