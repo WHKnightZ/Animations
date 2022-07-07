@@ -70,6 +70,80 @@
       return [p1 / width, 1 - p2 / height, p3 / width, 1 - p4 / height];
     };
 
+    class CubicBezier {
+      constructor() {}
+
+      set(p1x, p1y, p2x, p2y) {
+        this.p1x = p1x;
+        this.p1y = p1y;
+        this.p2x = p2x;
+        this.p2y = p2y;
+        this.cx = 3.0 * this.p1x;
+        this.cy = 3.0 * this.p1y;
+        this.bx = 3.0 * (this.p2x - this.p1x) - this.cx;
+        this.by = 3.0 * (this.p2y - this.p1y) - this.cy;
+        this.ax = 1.0 - this.cx - this.bx;
+        this.ay = 1.0 - this.cy - this.by;
+      }
+
+      ease(time, start, change, duration) {
+        return this.solve(time, this.getEpsilon(duration));
+      }
+
+      getEpsilon(duration) {
+        if (duration === void 0) {
+          duration = 400;
+        }
+        return 1 / (200 * duration);
+      }
+
+      solve(x, epsilon) {
+        return this.sampleCurveY(this.solveCurveX(x, epsilon));
+      }
+
+      sampleCurveX(t) {
+        return ((this.ax * t + this.bx) * t + this.cx) * t;
+      }
+
+      sampleCurveY(t) {
+        return ((this.ay * t + this.by) * t + this.cy) * t;
+      }
+
+      sampleDerivX(t) {
+        return (3.0 * this.ax * t + 2.0 * this.bx) * t + this.cx;
+      }
+
+      solveCurveX(x, epsilon) {
+        var t0;
+        var t1;
+        var t2;
+        var x2;
+        var d2;
+        for (var i = 0, t2 = x; i < 8; i++) {
+          x2 = this.sampleCurveX(t2) - x;
+          if (Math.abs(x2) < epsilon) return t2;
+          d2 = this.sampleDerivX(t2);
+          if (Math.abs(d2) < epsilon) break;
+          t2 = t2 - x2 / d2;
+        }
+        t0 = 0.0;
+        t1 = 1.0;
+        t2 = x;
+        if (t2 < t0) return t0;
+        if (t2 > t1) return t1;
+        while (t0 < t1) {
+          x2 = this.sampleCurveX(t2);
+          if (Math.abs(x2 - x) < epsilon) return t2;
+          if (x > x2) t0 = t2;
+          else t1 = t2;
+          t2 = (t1 - t0) * 0.5 + t0;
+        }
+        return t2;
+      }
+    }
+
+    const c = new CubicBezier();
+
     // Board
     const board = () => {
       const canvas = document.getElementById("board");
@@ -208,49 +282,51 @@
     const calBezierPoints = () => {
       [xLeft, yLeft, xRight, yRight] = calCubicBezier(pointLeft, pointRight);
 
-      const sqrtLeft = Math.sqrt(xLeft * xLeft + yLeft * yLeft);
-      const sqrtRight = Math.sqrt(xRight * xRight + yRight * yRight);
+      // const sqrtLeft = Math.sqrt(xLeft * xLeft + yLeft * yLeft);
+      // const sqrtRight = Math.sqrt(xRight * xRight + yRight * yRight);
 
-      bezierPoints = [
-        [0, 0],
-        [sqrtLeft * SQRT_1_2, sqrtLeft * SQRT_1_2 - 1],
-        [sqrtRight * SQRT_1_2, sqrtRight * SQRT_1_2 - 1],
-        [1, 0],
-      ];
+      c.set(xLeft, yLeft, xRight, yRight);
+
+      // bezierPoints = [
+      //   [0, 0],
+      //   [sqrtLeft * SQRT_1_2, sqrtLeft * SQRT_1_2 - 1],
+      //   [sqrtRight * SQRT_1_2, sqrtRight * SQRT_1_2 - 1],
+      //   [1, 0],
+      // ];
     };
 
     calBezierPoints();
 
-    const findPointFromBezierPoints = (bezierPoints, relativePos) => {
-      const newBezierPoints = [];
+    // const findPointFromBezierPoints = (bezierPoints, relativePos) => {
+    //   const newBezierPoints = [];
 
-      for (let i = 0; i < bezierPoints.length - 1; i += 1) {
-        const left = bezierPoints[i];
-        const right = bezierPoints[i + 1];
-        newBezierPoints.push([
-          left[0] * (1 - relativePos) + right[0] * relativePos,
-          left[1] * (1 - relativePos) + right[1] * relativePos,
-        ]);
-      }
+    //   for (let i = 0; i < bezierPoints.length - 1; i += 1) {
+    //     const left = bezierPoints[i];
+    //     const right = bezierPoints[i + 1];
+    //     newBezierPoints.push([
+    //       left[0] * (1 - relativePos) + right[0] * relativePos,
+    //       left[1] * (1 - relativePos) + right[1] * relativePos,
+    //     ]);
+    //   }
 
-      if (newBezierPoints.length === 1) return newBezierPoints[0];
+    //   if (newBezierPoints.length === 1) return newBezierPoints[0];
 
-      return findPointFromBezierPoints(newBezierPoints, relativePos);
-    };
+    //   return findPointFromBezierPoints(newBezierPoints, relativePos);
+    // };
 
-    const sqr2 = (x) => x * x;
-    const sqr3 = (x) => x * x * x;
+    // const sqr2 = (x) => x * x;
+    // const sqr3 = (x) => x * x * x;
 
-    const bezierFunction = (x0, x1, x2, x3, relativePos) =>
-      sqr3(1 - relativePos) * x0 +
-      3 * relativePos * sqr2(1 - relativePos) * x1 +
-      3 * (1 - relativePos) * sqr2(relativePos) * x2 +
-      sqr3(relativePos) * x3;
+    // const bezierFunction = (x0, x1, x2, x3, relativePos) =>
+    //   sqr3(1 - relativePos) * x0 +
+    //   3 * relativePos * sqr2(1 - relativePos) * x1 +
+    //   3 * (1 - relativePos) * sqr2(relativePos) * x2 +
+    //   sqr3(relativePos) * x3;
 
-    for (let i = 0; i < 10; i += 1)
-      console.log(
-        bezierFunction(bezierPoints[0][0], bezierPoints[1][0], bezierPoints[2][0], bezierPoints[0][0], i * 0.1)
-      );
+    // for (let i = 0; i < 10; i += 1)
+    //   console.log(
+    //     bezierFunction(bezierPoints[0][0], bezierPoints[1][0], bezierPoints[2][0], bezierPoints[0][0], i * 0.1)
+    //   );
 
     const animationCanvas = () => {
       const canvas = document.getElementById("animation-canvas");
@@ -288,9 +364,9 @@
 
         const relativePos = (1 / maxDuration) * duration;
 
-        const a = findPointFromBezierPoints(bezierPoints, relativePos);
+        // const a = findPointFromBezierPoints(bezierPoints, relativePos)[0];
 
-        const posX = a[0] * (width - 50);
+        const posX = c.ease(relativePos, 0, 0, 1) * (width - 50);
 
         context.clearRect(0, 0, width, height);
         context.fillStyle = "green";
