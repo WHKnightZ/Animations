@@ -19,8 +19,17 @@
   </style>
   <body style="margin: 0; padding: 32px 0; display: flex; flex-direction: column; align-items: center">
     <div style="display: flex; justify-content: center; align-items: center; flex-wrap: wrap">
-      <canvas id="board" width="400" height="400" style="border: 1px solid #757575; margin: 0 16px"></canvas>
-      <div style="border: 1px solid #757575; margin: 0 16px; display: flex; flex-direction: column; width: 400px">
+      <canvas id="board" width="400" height="400" style="border: 1px solid #757575; margin: 0 16px 32px"></canvas>
+      <div
+        style="
+          border: 1px solid #757575;
+          margin: 0 16px;
+          display: flex;
+          flex-direction: column;
+          width: 400px;
+          margin-bottom: 32px;
+        "
+      >
         <div style="position: relative; width: 100%; height: 200px; text-align: center">
           <div style="margin-top: 32px">Css</div>
           <div
@@ -47,6 +56,7 @@
         </div>
       </div>
     </div>
+    <input type="range" min="1" max="50" value="5" id="duration-range" />
     <button id="button-start" style="margin-top: 32px">Start</button>
   </body>
   <script>
@@ -57,7 +67,6 @@
     const DRAGGING_RIGHT = 2;
     const POINT_RADIUS = 9;
     const DEFAULT = [0.4, 0.1, 0.2, 0.85];
-    const SQRT_1_2 = Math.sqrt(2) / 2;
 
     let width, height, pointLeft, pointRight;
     let maxDuration = 0.5;
@@ -282,17 +291,7 @@
     const calBezierPoints = () => {
       [xLeft, yLeft, xRight, yRight] = calCubicBezier(pointLeft, pointRight);
 
-      // const sqrtLeft = Math.sqrt(xLeft * xLeft + yLeft * yLeft);
-      // const sqrtRight = Math.sqrt(xRight * xRight + yRight * yRight);
-
       c.set(xLeft, yLeft, xRight, yRight);
-
-      // bezierPoints = [
-      //   [0, 0],
-      //   [sqrtLeft * SQRT_1_2, sqrtLeft * SQRT_1_2 - 1],
-      //   [sqrtRight * SQRT_1_2, sqrtRight * SQRT_1_2 - 1],
-      //   [1, 0],
-      // ];
     };
 
     calBezierPoints();
@@ -323,24 +322,22 @@
     //   3 * (1 - relativePos) * sqr2(relativePos) * x2 +
     //   sqr3(relativePos) * x3;
 
-    // for (let i = 0; i < 10; i += 1)
-    //   console.log(
-    //     bezierFunction(bezierPoints[0][0], bezierPoints[1][0], bezierPoints[2][0], bezierPoints[0][0], i * 0.1)
-    //   );
-
     const animationCanvas = () => {
       const canvas = document.getElementById("animation-canvas");
       const context = canvas.getContext("2d");
       const width = canvas.width;
       const height = canvas.height;
 
-      let leftToRight = false;
+      let leftToRight = true;
       let duration = 0;
-      let start = false;
+      let running = false;
       const btnStart = document.getElementById("button-start");
       btnStart.addEventListener("click", () => {
-        start = true;
-        leftToRight = !leftToRight;
+        if (running) {
+          duration = maxDuration - duration;
+          leftToRight = !leftToRight;
+        }
+        running = true;
       });
 
       let then;
@@ -352,13 +349,12 @@
         const elapsed = (now - then) / 1000;
         then = now;
 
-        if (start) {
-          if (leftToRight) {
-            duration += elapsed;
-            if (duration > maxDuration) duration = maxDuration;
-          } else {
-            duration -= elapsed;
-            if (duration < 0) duration = 0;
+        if (running) {
+          duration += elapsed;
+          if (duration > maxDuration) {
+            running = false;
+            duration = 0;
+            leftToRight = !leftToRight;
           }
         }
 
@@ -366,7 +362,8 @@
 
         // const a = findPointFromBezierPoints(bezierPoints, relativePos)[0];
 
-        const posX = c.ease(relativePos, 0, 0, 1) * (width - 50);
+        let posX = c.ease(relativePos, 0, 0, 1) * (width - 50);
+        if (!leftToRight) posX = 350 - posX;
 
         context.clearRect(0, 0, width, height);
         context.fillStyle = "green";
@@ -379,5 +376,15 @@
     };
 
     animationCanvas();
+
+    // Handle duration range
+    const handleDurationRange = () => {
+      const durationRange = document.getElementById("duration-range");
+      durationRange.addEventListener("input", (e) => {
+        maxDuration = Number(e.target.value) / 10;
+      });
+    };
+
+    handleDurationRange();
   </script>
 </html>
