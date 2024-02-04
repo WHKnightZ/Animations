@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body style="margin: 0; padding: 16px; height: 100vh; display: flex; align-items: center; justify-content: center">
+    <canvas id="canvas" width="600" height="600" style="border: 2px solid #757575"></canvas>
+  </body>
+  <script>
+    const WIDTH = 600;
+    const HEIGHT = 600;
+    const CENTER = WIDTH / 2;
+    const SIZE = 500;
+    const FPS = 60;
+    const INTERVAL = 1000 / FPS;
+    const MAX_TIMER = 40;
+    const COUNT = 8;
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    class Ball {
+      constructor(angle, delay) {
+        this.timer = -delay;
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        this.startX = CENTER - (SIZE / 2) * cos;
+        this.startY = CENTER - (SIZE / 2) * sin;
+        this.fullX = SIZE * cos;
+        this.fullY = SIZE * sin;
+      }
+
+      render() {
+        if (this.timer < 0) return;
+
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 20, 0, 2 * Math.PI);
+        ctx.fillStyle = "orange";
+        ctx.fill();
+      }
+
+      update() {
+        this.timer += 1;
+        if (this.timer < 0) return;
+
+        let newTime = MAX_TIMER - Math.abs((this.timer % (MAX_TIMER * 2)) - MAX_TIMER); // Pingpong
+        newTime = newTime / MAX_TIMER;
+        const pos = easeInOut(newTime);
+        this.x = this.startX + pos * this.fullX;
+        this.y = this.startY + pos * this.fullY;
+      }
+    }
+
+    const list = Array.from({ length: COUNT }).map(
+      (_, index) => new Ball((Math.PI / COUNT) * index, (index * MAX_TIMER) / COUNT)
+    );
+
+    let then = 0;
+
+    const easeInOut = (x) => {
+      return -(Math.cos(Math.PI * x) - 1) / 2;
+      //   return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+    };
+
+    const update = (now = 0) => {
+      requestAnimationFrame(update);
+
+      const elapsed = now - then;
+      if (elapsed < INTERVAL) return;
+      then = now - (elapsed % INTERVAL);
+
+      list.forEach((l) => l.update());
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+      list.forEach((l) => l.render());
+    };
+
+    update();
+  </script>
+</html>
